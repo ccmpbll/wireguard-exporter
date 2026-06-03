@@ -1,0 +1,17 @@
+[Unit]
+Description=WireGuard Prometheus Exporter
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/wireguard-exporter --wg.interface=wg0
+Restart=on-failure
+RestartSec=5s
+# needs CAP_NET_ADMIN to read WireGuard state via netlink
+AmbientCapabilities=CAP_NET_ADMIN
+CapabilityBoundingSet=CAP_NET_ADMIN
+NoNewPrivileges=true
+DynamicUser=true
+
+[Install]
+WantedBy=multi-user.target
