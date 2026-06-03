@@ -11,7 +11,6 @@ import (
 
 func main() {
 	listenAddr := flag.String("web.listen-address", ":9586", "Address to listen on")
-	metricsPath := flag.String("web.telemetry-path", "/metrics", "Path under which to expose metrics")
 	iface := flag.String("wg.interface", "", "WireGuard interface to monitor (empty = all)")
 	onlineThreshold := flag.Duration("wg.online-threshold", defaultOnlineThreshold, "Max age of last handshake for peer to be considered online")
 	flag.Parse()
@@ -23,9 +22,9 @@ func main() {
 
 	prometheus.MustRegister(collector)
 
-	http.Handle(*metricsPath, promhttp.Handler())
+	http.Handle("/metrics", promhttp.Handler())
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`<html><body><a href="` + *metricsPath + `">Metrics</a></body></html>`))
+		w.Write([]byte(`<html><body><a href="/metrics">Metrics</a></body></html>`))
 	})
 
 	log.Printf("Listening on %s, scraping interface %q", *listenAddr, *iface)

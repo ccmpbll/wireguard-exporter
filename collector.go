@@ -11,7 +11,7 @@ import (
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
-const defaultOnlineThreshold = 3 * time.Minute
+const defaultOnlineThreshold = 5 * time.Minute
 
 type peerState struct {
 	rxBytes  int64

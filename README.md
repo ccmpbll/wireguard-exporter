@@ -1,6 +1,6 @@
 # wireguard-exporter
 
-A Prometheus exporter for WireGuard. Reads peer state directly from the kernel via netlink — no `wg show` subprocess.
+A Prometheus exporter for WireGuard. Uses [`wgctrl`](https://pkg.go.dev/golang.zx2c4.com/wireguard/wgctrl) to read peer state via netlink directly from the WireGuard kernel module — no `wg show` subprocess, no parsing.
 
 ## Metrics
 
@@ -24,10 +24,11 @@ wireguard-exporter [flags]
 
 Flags:
   --web.listen-address   Address to listen on (default: :9586)
-  --web.telemetry-path   Path to expose metrics (default: /metrics)
   --wg.interface         WireGuard interface to monitor (default: all interfaces)
-  --wg.online-threshold  Max age of last handshake to consider peer online (default: 3m)
+  --wg.online-threshold  Max age of last handshake to consider peer online (default: 5m)
 ```
+
+Metrics are always served at `/metrics`.
 
 The exporter needs `CAP_NET_ADMIN` to read WireGuard state.
 
@@ -44,7 +45,7 @@ docker run -d \
 
 ## Running as a systemd service
 
-A sample unit file is included at [`wireguard-exporter.service`](wireguard-exporter.service). It uses `DynamicUser` and grants only `CAP_NET_ADMIN`.
+A sample unit file is included at [`wireguard-exporter.service`](wireguard-exporter.service). It uses `DynamicUser` (systemd creates a temporary unprivileged user at runtime — no need to create a system user manually) and grants only `CAP_NET_ADMIN`.
 
 ```bash
 cp wireguard-exporter.service /etc/systemd/system/
@@ -62,6 +63,13 @@ make build          # produces wireguard-exporter (linux/amd64)
 make deploy         # build + scp to your host + systemctl restart
 ```
 
+## Dependencies
+
+| Module | Purpose |
+|--------|---------|
+| [`golang.zx2c4.com/wireguard/wgctrl`](https://pkg.go.dev/golang.zx2c4.com/wireguard/wgctrl) | Reads WireGuard peer state via netlink |
+| [`github.com/prometheus/client_golang`](https://pkg.go.dev/github.com/prometheus/client_golang) | Prometheus metrics exposition |
+
 ## Prometheus scrape config
 
 ```yaml
@@ -73,6 +81,6 @@ scrape_configs:
 
 ## Releases
 
-Tagged releases are built automatically via GitHub Actions. Each release publishes:
-- A pre-built `wireguard-exporter-linux-amd64` binary attached to the GitHub release
-- A Docker image pushed to [Docker Hub](https://hub.docker.com/r/ccmpbll/wireguard-exporter)
+Every push to `main` builds the binary and publishes a `latest` Docker image. Tagged releases (`v*`) additionally attach a pre-built `wireguard-exporter-linux-amd64` binary to the GitHub release and push versioned Docker tags.
+
+Docker images: [hub.docker.com/r/ccmpbll/wireguard-exporter](https://hub.docker.com/r/ccmpbll/wireguard-exporter)
