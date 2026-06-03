@@ -1,5 +1,7 @@
 # wireguard-exporter
 
+![Build Status](https://img.shields.io/github/actions/workflow/status/ccmpbll/wireguard-exporter/release.yml) ![Docker Image Size](https://img.shields.io/docker/image-size/ccmpbll/wireguard-exporter/latest) ![Docker Pulls](https://img.shields.io/docker/pulls/ccmpbll/wireguard-exporter.svg) ![License](https://img.shields.io/badge/License-MIT-blue.svg)
+
 A Prometheus exporter for WireGuard. Uses [`wgctrl`](https://pkg.go.dev/golang.zx2c4.com/wireguard/wgctrl) to read peer state via netlink directly from the WireGuard kernel module — no `wg show` subprocess, no parsing.
 
 ## Metrics
