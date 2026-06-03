@@ -1,11 +1,13 @@
 BINARY   = wireguard-exporter
-TARGET   = linux/amd64
 LDFLAGS  = -s -w
 
-.PHONY: build deploy tidy release
+.PHONY: build snapshot deploy tidy release
 
 build:
 	GOOS=linux GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o $(BINARY) .
+
+snapshot:
+	goreleaser build --snapshot --clean
 
 deploy: build
 	scp -P 42422 $(BINARY) root@45.79.215.253:/usr/local/bin/$(BINARY)

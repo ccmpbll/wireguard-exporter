@@ -1,0 +1,51 @@
+version: 2
+
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X main.version={{.Version}}
+
+archives:
+  - formats:
+      - tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+nfpms:
+  - package_name: wireguard-exporter
+    homepage: https://github.com/ccmpbll/wireguard-exporter
+    maintainer: ccmpbll <ccmpbll@gmail.com>
+    description: Prometheus exporter for WireGuard — reads peer state directly from the kernel via netlink.
+    license: MIT
+    formats:
+      - deb
+      - rpm
+      - apk
+    contents:
+      - src: wireguard-exporter.service
+        dst: /lib/systemd/system/wireguard-exporter.service
+    scripts:
+      postinstall: scripts/postinstall.sh
+      preremove: scripts/preremove.sh
+
+dockers:
+  - image_templates:
+      - "ccmpbll/wireguard-exporter:{{ .Tag }}"
+      - "ccmpbll/wireguard-exporter:{{ .Major }}.{{ .Minor }}"
+      - "ccmpbll/wireguard-exporter:latest"
+    dockerfile: Dockerfile.goreleaser
+    extra_files:
+      - wireguard-exporter.service
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^chore:"
+      - "^docs:"
+      - "^ci:"

@@ -1,0 +1,4 @@
+FROM scratch
+COPY wireguard-exporter /wireguard-exporter
+EXPOSE 9586
+ENTRYPOINT ["/wireguard-exporter"]
