@@ -36,7 +36,6 @@ nfpms:
 dockers:
   - image_templates:
       - "ccmpbll/wireguard-exporter:{{ .Tag }}"
-      - "ccmpbll/wireguard-exporter:{{ .Major }}.{{ .Minor }}"
       - "ccmpbll/wireguard-exporter:latest"
     dockerfile: Dockerfile.goreleaser
     extra_files:

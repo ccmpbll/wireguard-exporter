@@ -17,6 +17,6 @@ tidy:
 	go mod tidy
 
 release:
-	@test -n "$(VERSION)" || (echo "Usage: make release VERSION=v1.0.0" && exit 1)
+	@test -n "$(VERSION)" || (echo "Usage: make release VERSION=2026.06.03" && exit 1)
 	git tag $(VERSION)
 	git push origin $(VERSION)
