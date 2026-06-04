@@ -12,10 +12,10 @@ A Prometheus exporter for WireGuard. Uses [`wgctrl`](https://pkg.go.dev/golang.z
 | `wireguard_peer_sent_bytes_total` | Counter | Total bytes sent to peer |
 | `wireguard_peer_last_handshake_seconds` | Gauge | Unix timestamp of last handshake |
 | `wireguard_peer_online` | Gauge | 1 if peer handshaked within threshold, 0 otherwise |
-| `wireguard_peer_receive_bytes_rate` | Gauge | Bytes/sec received since last scrape |
-| `wireguard_peer_send_bytes_rate` | Gauge | Bytes/sec sent since last scrape |
 | `wireguard_active_peers` | Gauge | Peers online (within threshold) |
 | `wireguard_total_peers` | Gauge | Total configured peers |
+
+Bandwidth rates can be derived in Prometheus/Grafana using `rate(wireguard_peer_received_bytes_total[5m])` and `rate(wireguard_peer_sent_bytes_total[5m])`.
 
 All per-peer metrics are labeled with `interface`, `public_key`, and `endpoint`.
 

@@ -13,28 +13,18 @@ import (
 
 const defaultOnlineThreshold = 5 * time.Minute
 
-type peerState struct {
-	rxBytes  int64
-	txBytes  int64
-	lastSeen time.Time
-}
-
 type collector struct {
 	mu              sync.Mutex
 	client          *wgctrl.Client
 	iface           string
 	onlineThreshold time.Duration
-	prevState       map[wgtypes.Key]peerState
 
-	// Gauges / counters
-	rxBytes        *prometheus.Desc
-	txBytes        *prometheus.Desc
-	lastHandshake  *prometheus.Desc
-	peerOnline     *prometheus.Desc
-	rxBytesRate    *prometheus.Desc
-	txBytesRate    *prometheus.Desc
-	activePeers    *prometheus.Desc
-	totalPeers     *prometheus.Desc
+	rxBytes       *prometheus.Desc
+	txBytes       *prometheus.Desc
+	lastHandshake *prometheus.Desc
+	peerOnline    *prometheus.Desc
+	activePeers   *prometheus.Desc
+	totalPeers    *prometheus.Desc
 }
 
 func newCollector(iface string, onlineThreshold time.Duration) (*collector, error) {
@@ -49,7 +39,6 @@ func newCollector(iface string, onlineThreshold time.Duration) (*collector, erro
 		client:          client,
 		iface:           iface,
 		onlineThreshold: onlineThreshold,
-		prevState:       make(map[wgtypes.Key]peerState),
 
 		rxBytes: prometheus.NewDesc(
 			"wireguard_peer_received_bytes_total",
@@ -71,16 +60,6 @@ func newCollector(iface string, onlineThreshold time.Duration) (*collector, erro
 			"1 if peer has handshaked within the online threshold, 0 otherwise.",
 			labels, nil,
 		),
-		rxBytesRate: prometheus.NewDesc(
-			"wireguard_peer_receive_bytes_rate",
-			"Bytes received from peer per second since last scrape.",
-			labels, nil,
-		),
-		txBytesRate: prometheus.NewDesc(
-			"wireguard_peer_send_bytes_rate",
-			"Bytes sent to peer per second since last scrape.",
-			labels, nil,
-		),
 		activePeers: prometheus.NewDesc(
 			"wireguard_active_peers",
 			"Number of peers online (handshaked within threshold).",
@@ -99,8 +78,6 @@ func (c *collector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.txBytes
 	ch <- c.lastHandshake
 	ch <- c.peerOnline
-	ch <- c.rxBytesRate
-	ch <- c.txBytesRate
 	ch <- c.activePeers
 	ch <- c.totalPeers
 }
@@ -116,8 +93,6 @@ func (c *collector) Collect(ch chan<- prometheus.Metric) {
 		log.Printf("error reading WireGuard devices: %v", err)
 		return
 	}
-
-	newState := make(map[wgtypes.Key]peerState)
 
 	for _, dev := range devices {
 		active := 0
@@ -143,33 +118,11 @@ func (c *collector) Collect(ch chan<- prometheus.Metric) {
 				active++
 			}
 			ch <- prometheus.MustNewConstMetric(c.peerOnline, prometheus.GaugeValue, online, lbls...)
-
-			// Rate computation
-			cur := peerState{rxBytes: peer.ReceiveBytes, txBytes: peer.TransmitBytes, lastSeen: now}
-			newState[peer.PublicKey] = cur
-
-			if prev, ok := c.prevState[peer.PublicKey]; ok {
-				dt := now.Sub(prev.lastSeen).Seconds()
-				if dt > 0 {
-					rxRate := float64(cur.rxBytes-prev.rxBytes) / dt
-					txRate := float64(cur.txBytes-prev.txBytes) / dt
-					if rxRate < 0 {
-						rxRate = 0
-					}
-					if txRate < 0 {
-						txRate = 0
-					}
-					ch <- prometheus.MustNewConstMetric(c.rxBytesRate, prometheus.GaugeValue, rxRate, lbls...)
-					ch <- prometheus.MustNewConstMetric(c.txBytesRate, prometheus.GaugeValue, txRate, lbls...)
-				}
-			}
 		}
 
 		ch <- prometheus.MustNewConstMetric(c.activePeers, prometheus.GaugeValue, float64(active), dev.Name)
 		ch <- prometheus.MustNewConstMetric(c.totalPeers, prometheus.GaugeValue, float64(total), dev.Name)
 	}
-
-	c.prevState = newState
 }
 
 func (c *collector) devices() ([]*wgtypes.Device, error) {
