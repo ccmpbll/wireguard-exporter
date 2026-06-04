@@ -41,14 +41,11 @@ Bandwidth rates can be derived using `rate(wireguard_peer_received_bytes_total[5
 
 ## Usage
 
-```
-wireguard-exporter [flags]
-
-Flags:
-  --exporter_port      Address to listen on (default: :9586)
-  --interfaces         Comma-separated list of WireGuard interfaces to monitor (default: all)
-  --online_threshold   Max age of last handshake to consider peer online (default: 5m)
-```
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--exporter_port` | `:9586` | Address to listen on |
+| `--interfaces` | all | Comma-separated list of WireGuard interfaces to monitor |
+| `--online_threshold` | `5m` | Max age of last handshake to consider peer online |
 
 Metrics are always served at `/metrics`.
 
