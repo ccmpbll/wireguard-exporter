@@ -24,13 +24,12 @@ type collector struct {
 	onlineThreshold time.Duration
 
 	// Per-peer metrics
-	rxBytes        *prometheus.Desc
-	txBytes        *prometheus.Desc
-	lastHandshake  *prometheus.Desc
-	handshakeAge   *prometheus.Desc
-	peerOnline     *prometheus.Desc
-	activePeers    *prometheus.Desc
-	totalPeers     *prometheus.Desc
+	rxBytes       *prometheus.Desc
+	txBytes       *prometheus.Desc
+	handshakeAge  *prometheus.Desc
+	peerOnline    *prometheus.Desc
+	activePeers   *prometheus.Desc
+	totalPeers    *prometheus.Desc
 
 	// Per-interface metrics
 	ifaceRxBytes   *prometheus.Desc
@@ -67,13 +66,8 @@ func newCollector(iface string, onlineThreshold time.Duration) (*collector, erro
 			"Total bytes sent to peer.",
 			peerLabels, nil,
 		),
-		lastHandshake: prometheus.NewDesc(
-			"wireguard_peer_last_handshake_seconds",
-			"Unix timestamp of last handshake with peer.",
-			peerLabels, nil,
-		),
 		handshakeAge: prometheus.NewDesc(
-			"wireguard_peer_last_handshake_age_seconds",
+			"wireguard_peer_last_handshake_seconds",
 			"Seconds since last handshake with peer.",
 			peerLabels, nil,
 		),
@@ -139,7 +133,6 @@ func newCollector(iface string, onlineThreshold time.Duration) (*collector, erro
 func (c *collector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.rxBytes
 	ch <- c.txBytes
-	ch <- c.lastHandshake
 	ch <- c.handshakeAge
 	ch <- c.peerOnline
 	ch <- c.activePeers
@@ -183,13 +176,10 @@ func (c *collector) Collect(ch chan<- prometheus.Metric) {
 			ch <- prometheus.MustNewConstMetric(c.rxBytes, prometheus.CounterValue, float64(peer.ReceiveBytes), lbls...)
 			ch <- prometheus.MustNewConstMetric(c.txBytes, prometheus.CounterValue, float64(peer.TransmitBytes), lbls...)
 
-			var handshakeTS float64
 			if !peer.LastHandshakeTime.IsZero() {
-				handshakeTS = float64(peer.LastHandshakeTime.Unix())
 				age := now.Sub(peer.LastHandshakeTime).Seconds()
 				ch <- prometheus.MustNewConstMetric(c.handshakeAge, prometheus.GaugeValue, age, lbls...)
 			}
-			ch <- prometheus.MustNewConstMetric(c.lastHandshake, prometheus.GaugeValue, handshakeTS, lbls...)
 
 			online := 0.0
 			if !peer.LastHandshakeTime.IsZero() && now.Sub(peer.LastHandshakeTime) <= c.onlineThreshold {
