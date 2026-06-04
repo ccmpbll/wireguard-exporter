@@ -20,7 +20,7 @@ const defaultOnlineThreshold = 5 * time.Minute
 type collector struct {
 	mu              sync.Mutex
 	client          *wgctrl.Client
-	iface           string
+	ifaces          []string
 	onlineThreshold time.Duration
 
 	// Per-peer metrics
@@ -42,7 +42,7 @@ type collector struct {
 	ifaceTxDropped *prometheus.Desc
 }
 
-func newCollector(iface string, onlineThreshold time.Duration) (*collector, error) {
+func newCollector(ifaces []string, onlineThreshold time.Duration) (*collector, error) {
 	client, err := wgctrl.New()
 	if err != nil {
 		return nil, err
@@ -53,7 +53,7 @@ func newCollector(iface string, onlineThreshold time.Duration) (*collector, erro
 
 	return &collector{
 		client:          client,
-		iface:           iface,
+		ifaces:          ifaces,
 		onlineThreshold: onlineThreshold,
 
 		rxBytes: prometheus.NewDesc(
@@ -249,14 +249,18 @@ func readIfaceStats() (map[string][8]float64, error) {
 }
 
 func (c *collector) devices() ([]*wgtypes.Device, error) {
-	if c.iface != "" {
-		dev, err := c.client.Device(c.iface)
+	if len(c.ifaces) == 0 {
+		return c.client.Devices()
+	}
+	var devices []*wgtypes.Device
+	for _, iface := range c.ifaces {
+		dev, err := c.client.Device(iface)
 		if err != nil {
 			return nil, err
 		}
-		return []*wgtypes.Device{dev}, nil
+		devices = append(devices, dev)
 	}
-	return c.client.Devices()
+	return devices, nil
 }
 
 func endpointStr(ep *net.UDPAddr) string {

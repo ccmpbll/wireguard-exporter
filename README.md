@@ -45,9 +45,9 @@ Bandwidth rates can be derived using `rate(wireguard_peer_received_bytes_total[5
 wireguard-exporter [flags]
 
 Flags:
-  --web.listen-address   Address to listen on (default: :9586)
-  --wg.interface         WireGuard interface to monitor (default: all interfaces)
-  --wg.online-threshold  Max age of last handshake to consider peer online (default: 5m)
+  --exporter_port      Address to listen on (default: :9586)
+  --interfaces         Comma-separated list of WireGuard interfaces to monitor (default: all)
+  --online_threshold   Max age of last handshake to consider peer online (default: 5m)
 ```
 
 Metrics are always served at `/metrics`.
@@ -62,7 +62,7 @@ docker run -d \
   --cap-add NET_ADMIN \
   --network host \
   ccmpbll/wireguard-exporter \
-  --wg.interface=wg0
+  --interfaces=wg0
 ```
 
 ## Running as a systemd service
@@ -101,8 +101,3 @@ scrape_configs:
       - targets: ['<host>:9586']
 ```
 
-## Releases
-
-Every push to `main` builds the binary and publishes a `latest` Docker image. Tagged releases (`v*`) additionally attach a pre-built `wireguard-exporter-linux-amd64` binary to the GitHub release and push versioned Docker tags.
-
-Docker images: [hub.docker.com/r/ccmpbll/wireguard-exporter](https://hub.docker.com/r/ccmpbll/wireguard-exporter)
