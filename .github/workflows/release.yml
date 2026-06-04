@@ -56,6 +56,6 @@ jobs:
         uses: goreleaser/goreleaser-action@v7
         with:
           version: latest
-          args: ${{ startsWith(github.ref, 'refs/tags/') && 'release --clean' || 'build --snapshot --clean' }}
+          args: ${{ startsWith(github.ref, 'refs/tags/') && 'release --clean --skip=validate' || 'build --snapshot --clean' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

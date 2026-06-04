@@ -1,7 +1,5 @@
 version: 2
 
-version_scheme: calver
-
 builds:
   - env:
       - CGO_ENABLED=0
