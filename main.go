@@ -1,10 +1,15 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
 	"strings"
+	"syscall"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -30,15 +35,37 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to create collector: %v", err)
 	}
+	defer collector.Close()
 
 	reg := prometheus.NewRegistry()
 	reg.MustRegister(collector)
 
-	http.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	mux := http.NewServeMux()
+	mux.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`<html><body><a href="/metrics">Metrics</a></body></html>`))
 	})
 
-	log.Printf("Listening on %s, monitoring interfaces: %v", *port, ifaces)
-	log.Fatal(http.ListenAndServe(*port, nil))
+	srv := &http.Server{
+		Addr:    *port,
+		Handler: mux,
+	}
+
+	go func() {
+		log.Printf("Listening on %s, monitoring interfaces: %v", *port, ifaces)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("server error: %v", err)
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	log.Println("Shutting down...")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Fatalf("server shutdown error: %v", err)
+	}
 }

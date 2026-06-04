@@ -130,6 +130,10 @@ func newCollector(ifaces []string, onlineThreshold time.Duration) (*collector, e
 	}, nil
 }
 
+func (c *collector) Close() {
+	c.client.Close()
+}
+
 func (c *collector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.rxBytes
 	ch <- c.txBytes
@@ -207,6 +211,11 @@ func (c *collector) Collect(ch chan<- prometheus.Metric) {
 
 // readIfaceStats parses /proc/net/dev and returns a map of interface name to
 // [rxBytes, rxPackets, rxErrors, rxDropped, txBytes, txPackets, txErrors, txDropped].
+//
+// /proc/net/dev column layout (kernel docs: https://www.kernel.org/doc/html/latest/networking/statistics.html):
+//
+//	col 0-7:  receive  — bytes, packets, errs, drop, fifo, frame, compressed, multicast
+//	col 8-15: transmit — bytes, packets, errs, drop, fifo, colls,  carrier,   compressed
 func readIfaceStats() (map[string][8]float64, error) {
 	f, err := os.Open("/proc/net/dev")
 	if err != nil {
@@ -233,8 +242,10 @@ func readIfaceStats() (map[string][8]float64, error) {
 			continue
 		}
 
+		// Extract rx bytes, packets, errs, drop (cols 0-3)
+		// and tx bytes, packets, errs, drop (cols 8-11)
 		var vals [8]float64
-		indices := []int{0, 1, 2, 3, 8, 9, 10, 11} // rx: bytes packets errs drop; tx: bytes packets errs drop
+		indices := []int{0, 1, 2, 3, 8, 9, 10, 11}
 		for i, idx := range indices {
 			v, err := strconv.ParseFloat(fields[idx], 64)
 			if err != nil {
