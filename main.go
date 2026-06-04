@@ -20,9 +20,10 @@ func main() {
 		log.Fatalf("failed to create collector: %v", err)
 	}
 
-	prometheus.MustRegister(collector)
+	reg := prometheus.NewRegistry()
+	reg.MustRegister(collector)
 
-	http.Handle("/metrics", promhttp.Handler())
+	http.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`<html><body><a href="/metrics">Metrics</a></body></html>`))
 	})
