@@ -2,7 +2,7 @@ package main
 
 import (
 	"bufio"
-	"log"
+	"log/slog"
 	"net"
 	"os"
 	"strconv"
@@ -159,13 +159,18 @@ func (c *collector) Collect(ch chan<- prometheus.Metric) {
 
 	devices, err := c.devices()
 	if err != nil {
-		log.Printf("error reading WireGuard devices: %v", err)
+		slog.Error("error reading WireGuard devices", "err", err)
 		return
 	}
 
-	ifaceStats, err := readIfaceStats()
+	names := make(map[string]struct{}, len(devices))
+	for _, dev := range devices {
+		names[dev.Name] = struct{}{}
+	}
+
+	ifaceStats, err := readIfaceStats(names)
 	if err != nil {
-		log.Printf("error reading interface stats: %v", err)
+		slog.Error("error reading interface stats", "err", err)
 	}
 
 	for _, dev := range devices {
@@ -216,7 +221,7 @@ func (c *collector) Collect(ch chan<- prometheus.Metric) {
 //
 //	col 0-7:  receive  — bytes, packets, errs, drop, fifo, frame, compressed, multicast
 //	col 8-15: transmit — bytes, packets, errs, drop, fifo, colls,  carrier,   compressed
-func readIfaceStats() (map[string][8]float64, error) {
+func readIfaceStats(filter map[string]struct{}) (map[string][8]float64, error) {
 	f, err := os.Open("/proc/net/dev")
 	if err != nil {
 		return nil, err
@@ -237,6 +242,9 @@ func readIfaceStats() (map[string][8]float64, error) {
 			continue
 		}
 		name := strings.TrimSpace(line[:colonIdx])
+		if _, ok := filter[name]; !ok {
+			continue
+		}
 		fields := strings.Fields(line[colonIdx+1:])
 		if len(fields) < 16 {
 			continue

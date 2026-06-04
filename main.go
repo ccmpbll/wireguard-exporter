@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"flag"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -33,7 +33,8 @@ func main() {
 
 	collector, err := newCollector(ifaces, *onlineThreshold)
 	if err != nil {
-		log.Fatalf("failed to create collector: %v", err)
+		slog.Error("failed to create collector", "err", err)
+		os.Exit(1)
 	}
 	defer collector.Close()
 
@@ -52,9 +53,10 @@ func main() {
 	}
 
 	go func() {
-		log.Printf("Listening on %s, monitoring interfaces: %v", *port, ifaces)
+		slog.Info("starting wireguard-exporter", "addr", *port, "interfaces", ifaces)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("server error: %v", err)
+			slog.Error("server error", "err", err)
+			os.Exit(1)
 		}
 	}()
 
@@ -62,10 +64,11 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	log.Println("Shutting down...")
+	slog.Info("shutting down")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {
-		log.Fatalf("server shutdown error: %v", err)
+		slog.Error("server shutdown error", "err", err)
+		os.Exit(1)
 	}
 }
