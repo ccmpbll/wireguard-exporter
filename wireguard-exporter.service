@@ -4,7 +4,7 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/wireguard-exporter --wg.interface=wg0
+ExecStart=/usr/bin/wireguard-exporter --wg.interface=wg0
 Restart=on-failure
 RestartSec=5s
 # needs CAP_NET_ADMIN to read WireGuard state via netlink
