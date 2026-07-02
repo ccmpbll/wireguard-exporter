@@ -1,16 +1,13 @@
 package main
 
 import (
-	"bufio"
 	"log/slog"
 	"net"
-	"os"
-	"strconv"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/procfs"
 	"golang.zx2c4.com/wireguard/wgctrl"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
@@ -163,12 +160,7 @@ func (c *collector) Collect(ch chan<- prometheus.Metric) {
 		return
 	}
 
-	names := make(map[string]struct{}, len(devices))
-	for _, dev := range devices {
-		names[dev.Name] = struct{}{}
-	}
-
-	ifaceStats, err := readIfaceStats(names)
+	ifaceStats, err := readIfaceStats()
 	if err != nil {
 		slog.Error("error reading interface stats", "err", err)
 	}
@@ -202,69 +194,25 @@ func (c *collector) Collect(ch chan<- prometheus.Metric) {
 		ch <- prometheus.MustNewConstMetric(c.totalPeers, prometheus.GaugeValue, float64(total), dev.Name)
 
 		if stats, ok := ifaceStats[dev.Name]; ok {
-			ch <- prometheus.MustNewConstMetric(c.ifaceRxBytes, prometheus.CounterValue, stats[0], dev.Name)
-			ch <- prometheus.MustNewConstMetric(c.ifaceRxPackets, prometheus.CounterValue, stats[1], dev.Name)
-			ch <- prometheus.MustNewConstMetric(c.ifaceRxErrors, prometheus.CounterValue, stats[2], dev.Name)
-			ch <- prometheus.MustNewConstMetric(c.ifaceRxDropped, prometheus.CounterValue, stats[3], dev.Name)
-			ch <- prometheus.MustNewConstMetric(c.ifaceTxBytes, prometheus.CounterValue, stats[4], dev.Name)
-			ch <- prometheus.MustNewConstMetric(c.ifaceTxPackets, prometheus.CounterValue, stats[5], dev.Name)
-			ch <- prometheus.MustNewConstMetric(c.ifaceTxErrors, prometheus.CounterValue, stats[6], dev.Name)
-			ch <- prometheus.MustNewConstMetric(c.ifaceTxDropped, prometheus.CounterValue, stats[7], dev.Name)
+			ch <- prometheus.MustNewConstMetric(c.ifaceRxBytes, prometheus.CounterValue, float64(stats.RxBytes), dev.Name)
+			ch <- prometheus.MustNewConstMetric(c.ifaceRxPackets, prometheus.CounterValue, float64(stats.RxPackets), dev.Name)
+			ch <- prometheus.MustNewConstMetric(c.ifaceRxErrors, prometheus.CounterValue, float64(stats.RxErrors), dev.Name)
+			ch <- prometheus.MustNewConstMetric(c.ifaceRxDropped, prometheus.CounterValue, float64(stats.RxDropped), dev.Name)
+			ch <- prometheus.MustNewConstMetric(c.ifaceTxBytes, prometheus.CounterValue, float64(stats.TxBytes), dev.Name)
+			ch <- prometheus.MustNewConstMetric(c.ifaceTxPackets, prometheus.CounterValue, float64(stats.TxPackets), dev.Name)
+			ch <- prometheus.MustNewConstMetric(c.ifaceTxErrors, prometheus.CounterValue, float64(stats.TxErrors), dev.Name)
+			ch <- prometheus.MustNewConstMetric(c.ifaceTxDropped, prometheus.CounterValue, float64(stats.TxDropped), dev.Name)
 		}
 	}
 }
 
-// readIfaceStats parses /proc/net/dev and returns a map of interface name to
-// [rxBytes, rxPackets, rxErrors, rxDropped, txBytes, txPackets, txErrors, txDropped].
-//
-// /proc/net/dev column layout (kernel docs: https://www.kernel.org/doc/html/latest/networking/statistics.html):
-//
-//	col 0-7:  receive  — bytes, packets, errs, drop, fifo, frame, compressed, multicast
-//	col 8-15: transmit — bytes, packets, errs, drop, fifo, colls,  carrier,   compressed
-func readIfaceStats(filter map[string]struct{}) (map[string][8]float64, error) {
-	f, err := os.Open("/proc/net/dev")
+// readIfaceStats reads per-interface counters from /proc/net/dev via procfs.
+func readIfaceStats() (procfs.NetDev, error) {
+	fs, err := procfs.NewDefaultFS()
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
-
-	stats := make(map[string][8]float64)
-	scanner := bufio.NewScanner(f)
-
-	// Skip two header lines
-	scanner.Scan()
-	scanner.Scan()
-
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		colonIdx := strings.Index(line, ":")
-		if colonIdx < 0 {
-			continue
-		}
-		name := strings.TrimSpace(line[:colonIdx])
-		if _, ok := filter[name]; !ok {
-			continue
-		}
-		fields := strings.Fields(line[colonIdx+1:])
-		if len(fields) < 16 {
-			continue
-		}
-
-		// Extract rx bytes, packets, errs, drop (cols 0-3)
-		// and tx bytes, packets, errs, drop (cols 8-11)
-		var vals [8]float64
-		indices := []int{0, 1, 2, 3, 8, 9, 10, 11}
-		for i, idx := range indices {
-			v, err := strconv.ParseFloat(fields[idx], 64)
-			if err != nil {
-				continue
-			}
-			vals[i] = v
-		}
-		stats[name] = vals
-	}
-
-	return stats, scanner.Err()
+	return fs.NetDev()
 }
 
 func (c *collector) devices() ([]*wgtypes.Device, error) {
