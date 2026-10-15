@@ -74,8 +74,6 @@ systemctl enable --now wireguard-exporter
 
 ## Building from source
 
-Requires Go 1.22+.
-
 ```bash
 go mod tidy
 make build          # produces wireguard-exporter (linux/amd64)
